@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-50 text-slate-800;
+  /* System font stack is fine for now, no specific font like 'Inter' will be added to index.html yet.
+     If a specific font is desired later, it would be added to index.html and specified here. */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  margin: 0; /* Reset default margin */
+  padding: 0; /* Reset default padding */
+  box-sizing: border-box; /* Better box model */
+}
+
+/* Ensure html and body take full height for flex layouts in AppLayout */
+html, body, #root {
+  height: 100%;
+}
+
+/* Basic link styling */
+a {
+  @apply text-indigo-600 hover:text-indigo-800;
+}
