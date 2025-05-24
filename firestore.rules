@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can manage their own settings
+    // User documents are keyed by user UID
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Log data:
+    // - redirectLogs: Allow authenticated users to create.
+    //   No read/update/delete specified here, assuming these are append-only or managed by backend/functions.
+    match /redirectLogs/{logId} {
+      allow create: if request.auth != null;
+      // allow read, update, delete: if false; // Explicitly deny if not needed client-side
+    }
+
+    // - dailyLogs: Allow authenticated users to read and write their own logs.
+    //   Document ID is {userId}_{YYYYMMDD}.
+    match /dailyLogs/{dailyLogId} {
+      allow read, write: if request.auth != null && request.auth.uid == split(dailyLogId, '_')[0];
+    }
+
+    // Timeline posts:
+    // - Allow authenticated users to read all posts.
+    // - Allow authenticated users to create posts if userId in post matches their auth.uid.
+    // - Allow authenticated users to update their own posts (e.g., for comments, if comments were part of the post doc).
+    // - Allow authenticated users to delete their own posts.
+    match /timelinePosts/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // For updates, if only owner can edit the main content of the post:
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Note: 'likes' count is updated via increment. Security for increments should be handled carefully.
+      // If we allow client-side increment, the update rule might need to be more specific
+      // to only allow 'likes' field to be updated by any authenticated user, or use a Cloud Function.
+      // For now, this rule assumes only owner updates the document directly.
+      // Increments via server SDK bypass these rules for the field being incremented.
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Timeline post reactions:
+    // - Reactions are subcollections of timelinePosts.
+    // - Allow authenticated users to create reactions if fromUserId matches their auth.uid.
+    // - Allow users to delete their own reactions.
+    // - Allow read if the user can read the parent post (implied by timelinePosts read rule).
+    match /timelinePosts/{postId}/reactions/{reactionId} {
+      allow create: if request.auth != null && request.resource.data.fromUserId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.fromUserId == request.auth.uid;
+      // Read access to reactions: if users can read timelinePosts, they can read reactions.
+      allow read: if request.auth != null;
+    }
+  }
+}
